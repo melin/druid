@@ -29,6 +29,7 @@ import com.alibaba.druid.sql.ast.expr.SQLPropertyExpr;
 import com.alibaba.druid.sql.ast.statement.SQLAlterTableStatement;
 import com.alibaba.druid.sql.ast.statement.SQLCallStatement;
 import com.alibaba.druid.sql.ast.statement.SQLCreateTableStatement;
+import com.alibaba.druid.sql.ast.statement.SQLCreateTriggerStatement;
 import com.alibaba.druid.sql.ast.statement.SQLDeleteStatement;
 import com.alibaba.druid.sql.ast.statement.SQLDropTableStatement;
 import com.alibaba.druid.sql.ast.statement.SQLExprTableSource;
@@ -61,25 +62,40 @@ public class OracleWallVisitor extends OracleASTVisitorAdapter implements WallVi
 
     private final WallConfig      config;
     private final WallProvider    provider;
-    private final List<Violation> violations = new ArrayList<Violation>();
+    private final List<Violation> violations  = new ArrayList<Violation>();
+    private boolean               sqlModified = false;
 
     public OracleWallVisitor(WallProvider provider){
         this.config = provider.getConfig();
         this.provider = provider;
     }
 
+    @Override
+    public boolean isSqlModified() {
+        return sqlModified;
+    }
+
+    @Override
+    public void setSqlModified(boolean sqlModified) {
+        this.sqlModified = sqlModified;
+    }
+
+    @Override
     public WallProvider getProvider() {
         return provider;
     }
 
+    @Override
     public WallConfig getConfig() {
         return config;
     }
 
+    @Override
     public void addViolation(Violation violation) {
         this.violations.add(violation);
     }
 
+    @Override
     public List<Violation> getViolations() {
         return violations;
     }
@@ -185,8 +201,14 @@ public class OracleWallVisitor extends OracleASTVisitorAdapter implements WallVi
                                                                    this.toSQL(x)));
             return false;
         }
+        WallVisitorUtils.initWallTopStatementContext();
 
         return true;
+    }
+    
+    @Override
+    public void endVisit(SQLSelectStatement x) {
+        WallVisitorUtils.clearWallTopStatementContext();
     }
 
     @Override
@@ -196,9 +218,20 @@ public class OracleWallVisitor extends OracleASTVisitorAdapter implements WallVi
 
     @Override
     public boolean visit(SQLInsertStatement x) {
+        WallVisitorUtils.initWallTopStatementContext();
         WallVisitorUtils.checkInsert(this, x);
 
         return true;
+    }
+
+    @Override
+    public void endVisit(OracleInsertStatement x) {
+        endVisit((SQLInsertStatement) x);
+    }
+
+    @Override
+    public void endVisit(SQLInsertStatement x) {
+        WallVisitorUtils.clearWallTopStatementContext();
     }
 
     @Override
@@ -215,8 +248,14 @@ public class OracleWallVisitor extends OracleASTVisitorAdapter implements WallVi
                                                                    this.toSQL(x)));
             return false;
         }
+        WallVisitorUtils.initWallTopStatementContext();
 
         return true;
+    }
+
+    @Override
+    public void endVisit(OracleMultiInsertStatement x) {
+        WallVisitorUtils.clearWallTopStatementContext();
     }
 
     @Override
@@ -229,6 +268,16 @@ public class OracleWallVisitor extends OracleASTVisitorAdapter implements WallVi
         WallVisitorUtils.checkDelete(this, x);
         return true;
     }
+    
+    @Override
+    public void endVisit(OracleDeleteStatement x) {
+        endVisit((SQLDeleteStatement) x);
+    }
+
+    @Override
+    public void endVisit(SQLDeleteStatement x) {
+        WallVisitorUtils.clearWallTopStatementContext();
+    }
 
     @Override
     public boolean visit(OracleUpdateStatement x) {
@@ -237,6 +286,7 @@ public class OracleWallVisitor extends OracleASTVisitorAdapter implements WallVi
 
     @Override
     public boolean visit(SQLUpdateStatement x) {
+        WallVisitorUtils.initWallTopStatementContext();
         WallVisitorUtils.checkUpdate(this, x);
 
         return true;
@@ -285,6 +335,11 @@ public class OracleWallVisitor extends OracleASTVisitorAdapter implements WallVi
 
     @Override
     public boolean visit(SQLCallStatement x) {
+        return false;
+    }
+    
+    @Override
+    public boolean visit(SQLCreateTriggerStatement x) {
         return false;
     }
 }

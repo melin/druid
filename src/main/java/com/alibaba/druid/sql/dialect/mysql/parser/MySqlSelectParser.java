@@ -64,12 +64,11 @@ public class MySqlSelectParser extends SQLSelectParser {
 
         if (lexer.token() == Token.SELECT) {
             lexer.nextToken();
-            
 
             if (lexer.token() == Token.HINT) {
                 this.exprParser.parseHints(queryBlock.getHints());
             }
-            
+
             if (lexer.token() == Token.COMMENT) {
                 lexer.nextToken();
             }
@@ -197,7 +196,7 @@ public class MySqlSelectParser extends SQLSelectParser {
             queryBlock.setLimit(parseLimit());
         }
 
-        if (identifierEquals("PROCEDURE")) {
+        if (lexer.token() == Token.PROCEDURE) {
             lexer.nextToken();
             throw new ParserException("TODO");
         }
@@ -227,11 +226,14 @@ public class MySqlSelectParser extends SQLSelectParser {
     }
 
     protected void parseGroupBy(SQLSelectQueryBlock queryBlock) {
-        if (lexer.token() == (Token.GROUP)) {
+        SQLSelectGroupByClause groupBy = null;
+
+        if (lexer.token() == Token.GROUP) {
+            groupBy = new SQLSelectGroupByClause();
+
             lexer.nextToken();
             accept(Token.BY);
 
-            SQLSelectGroupByClause groupBy = new SQLSelectGroupByClause();
             while (true) {
                 groupBy.getItems().add(this.exprParser.expr());
                 if (!(lexer.token() == (Token.COMMA))) {
@@ -240,7 +242,7 @@ public class MySqlSelectParser extends SQLSelectParser {
                 lexer.nextToken();
             }
 
-            if (identifierEquals("WITH")) {
+            if (lexer.token() == Token.WITH) {
                 lexer.nextToken();
                 acceptIdentifier("ROLLUP");
 
@@ -250,15 +252,18 @@ public class MySqlSelectParser extends SQLSelectParser {
 
                 groupBy = mySqlGroupBy;
             }
-
-            if (lexer.token() == Token.HAVING) {
-                lexer.nextToken();
-
-                groupBy.setHaving(this.exprParser.expr());
-            }
-
-            queryBlock.setGroupBy(groupBy);
         }
+
+        if (lexer.token() == Token.HAVING) {
+            lexer.nextToken();
+
+            if (groupBy == null) {
+                groupBy = new SQLSelectGroupByClause();
+            }
+            groupBy.setHaving(this.exprParser.expr());
+        }
+
+        queryBlock.setGroupBy(groupBy);
     }
 
     protected SQLTableSource parseTableSourceRest(SQLTableSource tableSource) {
