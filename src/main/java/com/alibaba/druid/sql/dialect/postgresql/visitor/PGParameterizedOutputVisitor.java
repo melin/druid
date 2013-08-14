@@ -20,17 +20,28 @@ import com.alibaba.druid.sql.ast.expr.SQLCharExpr;
 import com.alibaba.druid.sql.ast.expr.SQLInListExpr;
 import com.alibaba.druid.sql.ast.expr.SQLIntegerExpr;
 import com.alibaba.druid.sql.ast.expr.SQLNCharExpr;
-import com.alibaba.druid.sql.ast.expr.SQLNullExpr;
 import com.alibaba.druid.sql.ast.expr.SQLNumberExpr;
 import com.alibaba.druid.sql.visitor.ParameterizedOutputVisitorUtils;
+import com.alibaba.druid.sql.visitor.ParameterizedVisitor;
 
-public class PGParameterizedOutputVisitor extends PGOutputVisitor {
-    public PGParameterizedOutputVisitor() {
-        this (new StringBuilder());
+public class PGParameterizedOutputVisitor extends PGOutputVisitor implements ParameterizedVisitor {
+
+    private int replaceCount;
+
+    public PGParameterizedOutputVisitor(){
+        this(new StringBuilder());
     }
-    
+
     public PGParameterizedOutputVisitor(Appendable appender){
         super(appender);
+    }
+
+    public int getReplaceCount() {
+        return this.replaceCount;
+    }
+
+    public void incrementReplaceCunt() {
+        replaceCount++;
     }
 
     public boolean visit(SQLInListExpr x) {
@@ -38,50 +49,41 @@ public class PGParameterizedOutputVisitor extends PGOutputVisitor {
     }
 
     public boolean visit(SQLBinaryOpExpr x) {
-        x = ParameterizedOutputVisitorUtils.merge(x);
+        x = ParameterizedOutputVisitorUtils.merge(this, x);
 
         return super.visit(x);
     }
 
-    public boolean visit(SQLNullExpr x) {
-        print('?');
-        return false;
-    }
-
     public boolean visit(SQLIntegerExpr x) {
-        if (Boolean.TRUE.equals(x.getAttribute(ParameterizedOutputVisitorUtils.ATTR_PARAMS_SKIP))) {
+        if (!ParameterizedOutputVisitorUtils.checkParameterize(x)) {
             return super.visit(x);
         }
 
-        print('?');
-        return false;
+        return ParameterizedOutputVisitorUtils.visit(this, x);
     }
 
     public boolean visit(SQLNumberExpr x) {
-        if (Boolean.TRUE.equals(x.getAttribute(ParameterizedOutputVisitorUtils.ATTR_PARAMS_SKIP))) {
+        if (!ParameterizedOutputVisitorUtils.checkParameterize(x)) {
             return super.visit(x);
         }
 
-        print('?');
-        return false;
+        return ParameterizedOutputVisitorUtils.visit(this, x);
     }
 
     public boolean visit(SQLCharExpr x) {
-        if (Boolean.TRUE.equals(x.getAttribute(ParameterizedOutputVisitorUtils.ATTR_PARAMS_SKIP))) {
+        if (!ParameterizedOutputVisitorUtils.checkParameterize(x)) {
             return super.visit(x);
         }
 
-        print('?');
-        return false;
+        return ParameterizedOutputVisitorUtils.visit(this, x);
     }
 
     public boolean visit(SQLNCharExpr x) {
-        if (Boolean.TRUE.equals(x.getAttribute(ParameterizedOutputVisitorUtils.ATTR_PARAMS_SKIP))) {
+        if (!ParameterizedOutputVisitorUtils.checkParameterize(x)) {
             return super.visit(x);
         }
 
-        print('?');
-        return false;
+        return ParameterizedOutputVisitorUtils.visit(this, x);
     }
 
 }
